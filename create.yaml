@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Template for Programs API Gateway and Lambdas.
+
+Parameters:
+  Prefix:
+    Type: String
+    Description: Prefix for this project
+    Default: test
+  LambdaName:
+    Type: String
+    Description: Lambda function name
+    Default: user-register-lambda
+  LambdaAccessRole:
+    Type: String
+    Description: Role name for api to get permission for lambda
+    Default: api-role-ARN
+  LambdaRole:
+    Type: String
+    Description: Role name for lambda to get permission for various services
+    Default: lambda-role-ARN
+  DynamoDBTableName:
+    Description: User table name
+    Type: String
+    Default: 'user-table'
+
+Resources:
+#User Register Api
+  UserRegisterLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Join [ -, [ !Ref Prefix, !Ref LambdaName]]
+      CodeUri: src/register_user
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      MemorySize: 128
+      Timeout: 5
+      Environment:
+        Variables:
+          USER_TABLE: !Join [ -, [ !Ref Prefix, !Ref DynamoDBTableName]]
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/test-lambda-func-role'
+      Events:
+        UserFunctionEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref UserApiGateway
+            Path: /create_user
+            Method: get
+      Tags:
+        "Name": !Ref LambdaName
+
+  UserApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: v1
+      MethodSettings:
+        - HttpMethod: '*'
+          ResourcePath: '/*'
+          DataTraceEnabled: false
+          MetricsEnabled: true
+      # DefinitionUri: swagger.yaml
+      DefinitionBody:
+        Tags:
+          "Name": !Ref LambdaName
+        swagger: "2.0"
+        info:
+          version: "1.0.0"
+          title: "User-API"
+          description: "API Gateway for Programs"
+        x-amazon-apigateway-request-validators:
+          basic:
+            validateRequestBody: true
+            validateRequestParameters: true
+          params-only:
+            validateRequestBody: true
+            validateRequestParameters: false
+        x-amazon-apigateway-request-validator: basic
+        paths:
+          #RegisterUserlink swagger
+          /create_user:
+            get:
+              consumes:
+                - "application/json"
+              produces:
+                - "application/json"
+              responses:
+                "200":
+                  description: "200 response"
+                  schema:
+                    type: "application/json"
+                "204":
+                  description: "204 response"
+                "404":
+                  description: "404 response"
+                  schema:
+                    type: "application/json"
+                "500":
+                  description: "500 response"
+                  schema:
+                    type: "application/json"
+              security:
+                - api_key: []
+              x-amazon-apigateway-integration:
+                httpMethod: post
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UserRegisterLambda.Arn}/invocations"
+                credentials: !Sub arn:aws:iam::${AWS::AccountId}:role/test-lambda-invoke-role'
+
+        securityDefinitions:
+          api_key:
+            type: "apiKey"
+            name: "x-api-key"
+            in: "header"
+
+  UserApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn: UserApiGatewayv1Stage
+    Properties:
+      ApiStages:
+      - ApiId: !Ref UserApiGateway
+        Stage: v1
+      Description: Usage plan for Programs
+      UsagePlanName: User-create-Usage-Plan
+
+  UserApiKey:
+    DependsOn: UserApiUsagePlan
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: !Sub "${Prefix}-user-api-key"
+      Description: API Key for Programs
+      Enabled: true
+
+  UserApiUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties :
+      KeyId: !Ref 'UserApiKey'
+      KeyType: API_KEY
+      UsagePlanId: !Ref 'UserApiUsagePlan'
+
+Outputs:
+  UserRegisterLambdaARN:
+    Description: The ARN for registration of user lambda
+    Value: !GetAtt UserRegisterLambda.Arn
+    Export:
+      Name: !Sub "${Prefix}-user-register-lambdaARN"

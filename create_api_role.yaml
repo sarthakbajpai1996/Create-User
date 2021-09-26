@@ -1,0 +1,58 @@
+Description: Role for APIGateway
+
+Resources:
+  APIRoleMgmt:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ -, [ !Ref Prefix, !Ref APIRole]]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            -  apigateway.amazonaws.com
+          Action: sts:AssumeRole
+  PolicyLambdaDevMgmt:
+    Type: AWS::IAM::Policy
+    DependsOn: APIRoleMgmt
+    Properties:
+      PolicyName: !Join [ -, [ !Ref Prefix, !Ref APIRole, Policy]]
+      Roles:
+        - !Ref APIRoleMgmt
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: 'LogStreamAccess'
+          Effect: 'Allow'
+          Action:
+          - 'logs:CreateLogGroup'
+          - 'logs:CreateLogStream'
+          - 'logs:GetLogEvents'
+          - 'logs:PutLogEvents'
+          Resource:
+          - 'arn:aws:logs:*:*:*'
+        - Sid: LambdaFullAccess
+          Resource:
+          - arn:aws:lambda:*
+          Action:
+          - lambda:*
+          Effect: Allow
+
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  Prefix:
+    Description: Prefix for this project
+    Type: String
+    Default: 'test'
+  APIRole:
+    Description: Prefix for this project
+    Type: String
+    Default: lambda-invoke-role
+
+Outputs:
+  UserApiARN:
+    Description: The ARN for user api role
+    Value: !GetAtt APIRoleMgmt.Arn
+    Export:
+      Name: !Sub "${Prefix}-api-role-ARN"

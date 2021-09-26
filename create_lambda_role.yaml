@@ -1,0 +1,58 @@
+Description: Role for Lambda
+
+Resources:
+  LambdaRoleMgmt:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ -, [ !Ref Prefix, !Ref LambdafuncRole]]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action: sts:AssumeRole
+  PolicyLambdaDevMgmt:
+    Type: AWS::IAM::Policy
+    DependsOn: LambdaRoleMgmt
+    Properties:
+      PolicyName: !Join [ -, [ !Ref Prefix, !Ref LambdafuncRole, 'Policy']]
+      Roles:
+        - !Ref LambdaRoleMgmt
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: 'LogStreamAccess'
+          Effect: 'Allow'
+          Action:
+          - 'logs:CreateLogGroup'
+          - 'logs:CreateLogStream'
+          - 'logs:GetLogEvents'
+          - 'logs:PutLogEvents'
+          Resource:
+          - 'arn:aws:logs:*:*:*'
+        - Sid: 'AllAPIActionsOnBooks'
+          Effect: 'Allow'
+          Action: 'dynamodb:*'
+          Resource: 'arn:aws:dynamodb:*:*:*'
+
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  Prefix:
+    Description: Prefix for this project
+    Type: String
+    Default: 'test'
+  LambdafuncRole:
+    Description: Prefix for this project
+    Type: String
+    Default: lambda-func-role
+
+Outputs:
+  LambdaRoleARN:
+    Description: The ARN for lambda role
+    Value: !GetAtt LambdaRoleMgmt.Arn
+    Export:
+      Name: !Sub "${Prefix}-lambda-role-ARN"
+
+
