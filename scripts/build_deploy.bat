@@ -1,0 +1,2 @@
+sam package --s3-bucket {bucket-name} --s3-prefix create_user --template-file create.yaml --output-template-file packaged_sam.yaml
+sam deploy --s3-bucket {bucket-name} --s3-prefix create_user --stack-name Create-User-Stack --capabilities CAPABILITY_IAM --template-file packaged_sam.yaml
