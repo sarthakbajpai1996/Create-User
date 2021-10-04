@@ -13,11 +13,11 @@ def write_in_dynamo(data):
     )
     print(response)
 
-def query_dynamo(email):
+def query_dynamo(telephone_number):
     dynamodb = boto3.resource('dynamodb')
     table = dynamodb.Table(os.environ['USER_TABLE'])
     response = table.query(
-        KeyConditionExpression=Key('email').eq(email)
+        KeyConditionExpression=Key('telephone_number').eq(telephone_number)
     )
 
     if len(response['Items']):
@@ -32,9 +32,9 @@ def dynamodb_handler(email):
         return("User does not exists")
 
 def dynamodb_updates(data):
-    if 'email' in data and data['email']:
-        write_in_dynamo(data)
+    if 'telephone_number' in data and data['telephone_number'] and data["phone_password"]:
+        write_in_dynamo({"telephone_number":data['telephone_number'],'phone_password':data["phone_password"]})
         return "User Updated"
     else:
-        return "Email missing"
+        return "Telephone Number missing"
 

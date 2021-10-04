@@ -25,8 +25,8 @@ def lambda_handler(event, context):
     :param event:
      context:
     """
-    if 'queryStringParameters' in event and 'email' in event['queryStringParameters']:
-        result = dynamodb_handler(event['queryStringParameters']['email'])
+    if 'queryStringParameters' in event and 'telephone_number' in event['queryStringParameters']:
+        result = dynamodb_handler(event['queryStringParameters']['telephone_number'])
         return get_response_object(200, result)
     elif "body" in event and event["body"]:
         result = dynamodb_updates(json.loads(event["body"]))
